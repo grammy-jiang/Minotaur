@@ -1,0 +1,4 @@
+aiojobs
+aiokafka
+python-daemon
+sentry-sdk
