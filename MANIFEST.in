@@ -1,0 +1,2 @@
+include versioneer.py
+include minotaur/_version.py
