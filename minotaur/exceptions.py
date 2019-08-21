@@ -1,0 +1,2 @@
+class SettingsFrozenException(Exception):
+    pass
