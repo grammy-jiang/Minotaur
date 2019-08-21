@@ -1,4 +1,4 @@
 aiokafka
-apscheduler
+APScheduler
 python-daemon
 sentry-sdk
