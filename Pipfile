@@ -4,8 +4,23 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+black = "*"
+isort = "*"
 lxml = "*"
 mypy = "*"
+pylint = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-mypy = "*"
+pytest-pylint = "*"
+pytest-xdist = "*"
+setuptools = "*"
+sphinx = "*"
+tox = "*"
+twine = "*"
+versioneer = "*"
+wheel = "*"
+yapf = "*"
 
 [packages]
 aiokafka = "*"
