@@ -222,3 +222,8 @@ class BaseSettingsTest(TestCase):
         self.assertIn("test_project_1", self.base_settings)
         self.assertEqual(self.base_settings["test_project_1"], "project_1")
         self.assertEqual(self.base_settings.get_priority("test_project_1"), "project")
+
+        with self.assertRaises(ValueError):
+            self.base_settings.update("This is a wrong input.")
+        with self.assertRaises(TypeError):
+            self.base_settings.update(1)

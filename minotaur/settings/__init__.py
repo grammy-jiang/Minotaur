@@ -129,8 +129,9 @@ class BaseSettings(MutableMapping):
         ) -> Iterable[Tuple[str, Any]]:
             if isinstance(values_, Mapping):
                 return values_.items()
-            elif isinstance(values_, Iterable):
+            if isinstance(values_, Iterable):
                 return values_
+            raise TypeError
 
         for key, value in iter_values(values):
             self._data.setdefault(key, SettingAttributes()).set(
