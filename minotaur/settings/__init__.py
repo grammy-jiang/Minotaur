@@ -70,10 +70,10 @@ class BaseSettings(MutableMapping):
         self._frozen: bool = False
         self._data: Dict[str, SettingAttributes] = {}
         if settings:
-            self.update(settings, priority)
+            self.update(settings, priority=priority)
         self._frozen = True
 
-    def __contains__(self, key: str) -> bool:
+    def __contains__(self, key: object) -> bool:
         return key in self._data
 
     def __delitem__(self, key: KT) -> None:
@@ -119,8 +119,8 @@ class BaseSettings(MutableMapping):
         finally:
             self._frozen = status
 
-    def update(
-        self, __m: Mapping[KT, VT], priority: str = "project", **kwargs: VT
-    ) -> None:
-        for key, value in __m.items():
-            self._data.setdefault(key, SettingAttributes()).set(value, priority)
+    def update(self, values: Mapping[KT, VT], **kwargs: VT) -> None:
+        for key, value in values.items():
+            self._data.setdefault(key, SettingAttributes()).set(
+                value, kwargs.get("priority", "project")
+            )
