@@ -13,11 +13,13 @@ from typing import (
     DefaultDict,
     Dict,
     Generator,
+    Iterable,
     Iterator,
     List,
     Mapping,
     Optional,
     Tuple,
+    Union,
     VT_co,
 )
 
@@ -119,8 +121,18 @@ class BaseSettings(MutableMapping):
         finally:
             self._frozen = status
 
-    def update(self, values: Mapping[KT, VT], **kwargs: VT) -> None:
-        for key, value in values.items():
+    def update(
+        self, values: Union[Mapping[KT, VT], Iterable[Tuple[KT, VT]]], **kwargs: VT
+    ) -> None:
+        def iter_values(
+            values_: Union[Mapping[KT, VT], Iterable[Tuple[KT, VT]]]
+        ) -> Iterable[Tuple[str, Any]]:
+            if isinstance(values_, Mapping):
+                return values_.items()
+            elif isinstance(values_, Iterable):
+                return values_
+
+        for key, value in iter_values(values):
             self._data.setdefault(key, SettingAttributes()).set(
                 value, kwargs.get("priority", "project")
             )

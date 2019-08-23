@@ -202,6 +202,7 @@ class BaseSettingsTest(TestCase):
 
     @patch.dict(SETTING_PRIORITIES, {**SETTING_PRIORITIES, "customize": 25})
     def test_update(self):
+        # test for mapping object
         self.assertIsNone(
             self.base_settings.update(self.settings_customize, priority="customize")
         )
@@ -211,3 +212,13 @@ class BaseSettingsTest(TestCase):
             self.settings_customize["test_customize_1"],
         )
         self.assertIs(self.base_settings.get_priority("test_customize_1"), "customize")
+
+        # test for iterable object
+        self.assertIsNone(
+            self.base_settings.update(
+                list(self.settings_project.items()), priority="project"
+            )
+        )
+        self.assertIn("test_project_1", self.base_settings)
+        self.assertEqual(self.base_settings["test_project_1"], "project_1")
+        self.assertEqual(self.base_settings.get_priority("test_project_1"), "project")
