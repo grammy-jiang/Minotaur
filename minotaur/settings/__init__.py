@@ -2,15 +2,13 @@ from __future__ import annotations
 
 import heapq
 import logging
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 from collections.abc import MutableMapping
 from contextlib import contextmanager
 from typing import (
     KT,
     VT,
     Any,
-    Callable,
-    DefaultDict,
     Dict,
     Generator,
     Iterable,
@@ -48,7 +46,7 @@ class SettingAttributes:
     setting_attributes = namedtuple("SettingAttributes", ["rank", "priority", "value"])
 
     def __init__(self, value: Any = None, priority: str = None):
-        self._heap: List = []
+        self._heap: List[Tuple[int, str, Any]] = []
         self.set(value, priority)
 
     def set(self, value: Any = None, priority: str = None) -> None:
