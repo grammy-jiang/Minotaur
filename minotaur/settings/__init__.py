@@ -68,7 +68,7 @@ class SettingAttributes:
 class BaseSettings(MutableMapping):
     def __init__(self, settings: Mapping = None, priority="project"):
         self._frozen: bool = False
-        self._data: DefaultDict[str, SettingAttributes] = defaultdict(SettingAttributes)
+        self._data: Dict[str, SettingAttributes] = {}
         if settings:
             self.update(settings, priority)
         self._frozen = True
@@ -82,8 +82,8 @@ class BaseSettings(MutableMapping):
     def __getitem__(self, key: KT) -> VT_co:
         return self.get(key)
 
-    def __iter__(self) -> Iterator[Tuple[str, Any]]:
-        pass
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
 
     def __len__(self) -> int:
         return len(self._data)
@@ -92,8 +92,14 @@ class BaseSettings(MutableMapping):
         self.set(key, value)
 
     def get(self, key: KT, default: Any = None) -> Any:
-        value: Any = self._data[key].get()
-        return value if value else default
+        try:
+            value: Any = self._data[key].get()
+        except KeyError as err:
+            if default is not None:
+                return default
+            raise err
+        else:
+            return value
 
     def get_priority(self, k: KT) -> Optional[str]:
         return self._data[k].get_priority()
@@ -102,7 +108,7 @@ class BaseSettings(MutableMapping):
         return self._frozen
 
     def set(self, key: KT, value: VT, priority: str = "project") -> None:
-        self._data[key].set(value, priority)
+        self._data.setdefault(key, SettingAttributes()).set(value, priority)
 
     @contextmanager
     def unfreeze(self) -> Generator[BaseSettings, None, None]:
@@ -117,4 +123,4 @@ class BaseSettings(MutableMapping):
         self, __m: Mapping[KT, VT], priority: str = "project", **kwargs: VT
     ) -> None:
         for key, value in __m.items():
-            self._data[key].set(value, priority)
+            self._data.setdefault(key, SettingAttributes()).set(value, priority)

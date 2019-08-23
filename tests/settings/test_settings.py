@@ -1,4 +1,5 @@
-from typing import Dict
+from collections import Iterator
+from typing import Any, Dict
 from unittest.case import TestCase
 from unittest.mock import patch
 
@@ -44,7 +45,7 @@ class SettingAttributesTest(TestCase):
         cls.settings_customize_rank: int = 25
         cls.settings_customize_value: str = "test_customize"
 
-    def test_empty_setting_attributes(self) -> None:
+    def test_setting_attributes_empty(self) -> None:
         setting_attributes: SettingAttributes = SettingAttributes()
         self.assertIsNone(setting_attributes.get())
         self.assertIsNone(setting_attributes.get_priority())
@@ -69,11 +70,7 @@ class SettingAttributesTest(TestCase):
             setting_attributes.get_priority(), self.settings_project_priority
         )
 
-        self.assertIsNone(
-            setting_attributes.set(
-                self.settings_user_value, self.settings_user_priority
-            )
-        )
+        setting_attributes.set(self.settings_user_value, self.settings_user_priority)
         self.assertEqual(setting_attributes.get(), self.settings_project_value)
         self.assertEqual(
             setting_attributes.get_priority(), self.settings_project_priority
@@ -130,15 +127,18 @@ class BaseSettingsTest(TestCase):
         self.assertNotIn("test_customize_1", self.base_settings)
 
     def test_delitem(self):
+        self.assertIn("test_default_1", self.base_settings)
         del self.base_settings["test_default_1"]
         self.assertNotIn("test_default_1", self.base_settings)
 
     def test_getitem(self):
         self.assertEqual(self.base_settings["test_default_1"], "default_1")
+        with self.assertRaises(KeyError):
+            value: Any = self.base_settings["test_default_3"]
 
     def test_iter(self):
-        # TODO: add test
-        pass
+        iter_base_settings = iter(self.base_settings)
+        self.assertIsInstance(iter_base_settings, Iterator)
 
     def test_len(self):
         base_settings = BaseSettings()
@@ -163,12 +163,19 @@ class BaseSettingsTest(TestCase):
         self.assertEqual(
             self.base_settings.get("test_default_3", "default_3"), "default_3"
         )
+        with self.assertRaises(KeyError):
+            self.base_settings.get("test_default_4")
 
+    @patch.dict(SETTING_PRIORITIES, {**SETTING_PRIORITIES, "customize": 25})
     def test_get_priority(self):
         self.assertEqual(self.base_settings.get_priority("test_default_1"), "default")
 
         self.assertNotIn("test_default_3", self.base_settings)
-        self.assertIsNone(self.base_settings.get_priority("test_default_3"))
+        with self.assertRaises(KeyError):
+            self.base_settings.get_priority("test_default_3")
+
+        self.base_settings.set("test_default_3", "default_3", "customize")
+        self.assertEqual(self.base_settings.get_priority("test_default_3"), "customize")
 
     def test_is_frozen(self):
         self.assertTrue(self.base_settings.is_frozen())
@@ -176,10 +183,14 @@ class BaseSettingsTest(TestCase):
         self.base_settings._frozen = False
         self.assertFalse(self.base_settings.is_frozen())
 
+    @patch.dict(SETTING_PRIORITIES, {**SETTING_PRIORITIES, "customize": 25})
     def test_set(self):
-        self.assertIsNone(self.base_settings.set("test_default_3", "default_3"))
-
+        self.assertNotIn("test_default_3", self.base_settings)
+        self.assertIsNone(
+            self.base_settings.set("test_default_3", "default_3", "customize")
+        )
         self.assertEqual(self.base_settings["test_default_3"], "default_3")
+        self.assertEqual(self.base_settings.get_priority("test_default_3"), "customize")
 
     def test_unfreeze(self):
         self.assertTrue(self.base_settings.is_frozen())
@@ -195,5 +206,8 @@ class BaseSettingsTest(TestCase):
             self.base_settings.update(self.settings_customize, priority="customize")
         )
         self.assertIn("test_customize_1", self.base_settings)
-        self.assertIs(self.base_settings["test_customize_1"], "customize_1")
+        self.assertIs(
+            self.base_settings["test_customize_1"],
+            self.settings_customize["test_customize_1"],
+        )
         self.assertIs(self.base_settings.get_priority("test_customize_1"), "customize")
