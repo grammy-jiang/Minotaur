@@ -23,6 +23,8 @@ from typing import (
     VT_co,
 )
 
+from minotaur.exceptions import SettingsFrozenException
+
 logger = logging.getLogger(__name__)
 
 SETTING_PRIORITIES: Dict[str, int] = {
@@ -68,6 +70,17 @@ class SettingAttributes:
 
 
 class BaseSettings(MutableMapping):
+    class FrozenCheck:
+        def __call__(self, method):
+            def frozen_check(base_settings: BaseSettings, *args, **kwargs):
+                if base_settings.is_frozen():
+                    raise SettingsFrozenException
+                return method(base_settings, *args, **kwargs)
+
+            return frozen_check
+
+    frozen_check = FrozenCheck()
+
     def __init__(self, settings: Mapping = None, priority="project"):
         self._frozen: bool = False
         self._data: Dict[str, SettingAttributes] = {}
@@ -78,6 +91,7 @@ class BaseSettings(MutableMapping):
     def __contains__(self, key: object) -> bool:
         return key in self._data
 
+    @frozen_check
     def __delitem__(self, key: KT) -> None:
         del self._data[key]
 
@@ -90,6 +104,7 @@ class BaseSettings(MutableMapping):
     def __len__(self) -> int:
         return len(self._data)
 
+    @frozen_check
     def __setitem__(self, key: KT, value: VT) -> None:
         self.set(key, value)
 
@@ -109,6 +124,7 @@ class BaseSettings(MutableMapping):
     def is_frozen(self) -> bool:
         return self._frozen
 
+    @frozen_check
     def set(self, key: KT, value: VT, priority: str = "project") -> None:
         self._data.setdefault(key, SettingAttributes()).set(value, priority)
 
@@ -121,6 +137,7 @@ class BaseSettings(MutableMapping):
         finally:
             self._frozen = status
 
+    @frozen_check
     def update(
         self, values: Union[Mapping[KT, VT], Iterable[Tuple[KT, VT]]], **kwargs: VT
     ) -> None:

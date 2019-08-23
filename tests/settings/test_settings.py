@@ -3,6 +3,7 @@ from typing import Any, Dict
 from unittest.case import TestCase
 from unittest.mock import patch
 
+from minotaur.exceptions import SettingsFrozenException
 from minotaur.settings import (
     SETTING_PRIORITIES,
     BaseSettings,
@@ -128,7 +129,8 @@ class BaseSettingsTest(TestCase):
 
     def test_delitem(self):
         self.assertIn("test_default_1", self.base_settings)
-        del self.base_settings["test_default_1"]
+        with self.base_settings.unfreeze() as bs:
+            del bs["test_default_1"]
         self.assertNotIn("test_default_1", self.base_settings)
 
     def test_getitem(self):
@@ -147,11 +149,13 @@ class BaseSettingsTest(TestCase):
         self.assertEqual(len(self.base_settings), len(self.settings_default))
 
     def test_setitem(self):
-        self.base_settings["test_default_1"] = "project_1"
+        with self.base_settings.unfreeze() as bs:
+            bs["test_default_1"] = "project_1"
         self.assertEqual(self.base_settings["test_default_1"], "project_1")
         self.assertEqual(self.base_settings.get_priority("test_default_1"), "project")
 
-        self.base_settings["test_default_3"] = "default_3"
+        with self.base_settings.unfreeze() as bs:
+            bs["test_default_3"] = "default_3"
         self.assertEqual(self.base_settings["test_default_3"], "default_3")
 
         self.assertEqual(self.base_settings.get_priority("test_default_3"), "project")
@@ -174,7 +178,8 @@ class BaseSettingsTest(TestCase):
         with self.assertRaises(KeyError):
             self.base_settings.get_priority("test_default_3")
 
-        self.base_settings.set("test_default_3", "default_3", "customize")
+        with self.base_settings.unfreeze() as bs:
+            bs.set("test_default_3", "default_3", "customize")
         self.assertEqual(self.base_settings.get_priority("test_default_3"), "customize")
 
     def test_is_frozen(self):
@@ -186,9 +191,8 @@ class BaseSettingsTest(TestCase):
     @patch.dict(SETTING_PRIORITIES, {**SETTING_PRIORITIES, "customize": 25})
     def test_set(self):
         self.assertNotIn("test_default_3", self.base_settings)
-        self.assertIsNone(
-            self.base_settings.set("test_default_3", "default_3", "customize")
-        )
+        with self.base_settings.unfreeze() as bs:
+            self.assertIsNone(bs.set("test_default_3", "default_3", "customize"))
         self.assertEqual(self.base_settings["test_default_3"], "default_3")
         self.assertEqual(self.base_settings.get_priority("test_default_3"), "customize")
 
@@ -203,9 +207,8 @@ class BaseSettingsTest(TestCase):
     @patch.dict(SETTING_PRIORITIES, {**SETTING_PRIORITIES, "customize": 25})
     def test_update(self):
         # test for mapping object
-        self.assertIsNone(
-            self.base_settings.update(self.settings_customize, priority="customize")
-        )
+        with self.base_settings.unfreeze() as bs:
+            self.assertIsNone(bs.update(self.settings_customize, priority="customize"))
         self.assertIn("test_customize_1", self.base_settings)
         self.assertIs(
             self.base_settings["test_customize_1"],
@@ -214,14 +217,18 @@ class BaseSettingsTest(TestCase):
         self.assertIs(self.base_settings.get_priority("test_customize_1"), "customize")
 
         # test for iterable object
-        self.assertIsNone(
-            self.base_settings.update(
-                list(self.settings_project.items()), priority="project"
+        with self.base_settings.unfreeze() as bs:
+            self.assertIsNone(
+                bs.update(list(self.settings_project.items()), priority="project")
             )
-        )
         self.assertIn("test_project_1", self.base_settings)
         self.assertEqual(self.base_settings["test_project_1"], "project_1")
         self.assertEqual(self.base_settings.get_priority("test_project_1"), "project")
 
         with self.assertRaises(TypeError):
-            self.base_settings.update(1)
+            with self.base_settings.unfreeze() as bs:
+                bs.update(1)
+
+    def test_frozen_check(self):
+        with self.assertRaises(SettingsFrozenException):
+            del self.base_settings["test_default_1"]
