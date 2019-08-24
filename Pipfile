@@ -25,6 +25,7 @@ yapf = "*"
 [packages]
 aiokafka = "*"
 python-daemon = "*"
+pyyaml = "*"
 sentry-sdk = "*"
 APScheduler = "*"
 
