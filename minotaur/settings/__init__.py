@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import heapq
 import logging
+import os
 from collections import namedtuple
 from collections.abc import MutableMapping
 from contextlib import contextmanager
+from importlib import import_module
+from pathlib import Path
 from typing import (
     KT,
     VT,
@@ -21,8 +24,11 @@ from typing import (
     VT_co,
 )
 
+import yaml
+
 from minotaur.exceptions import SettingsFrozenException
 
+logging.basicConfig(format="%(asctime) %(levelname) %(message)s")
 logger = logging.getLogger(__name__)
 
 SETTING_PRIORITIES: Dict[str, int] = {
@@ -38,7 +44,7 @@ def get_settings_priority(priority: str) -> int:
     try:
         return SETTING_PRIORITIES[priority]
     except KeyError as err:
-        logger.error("Setting priority %s is not existed", priority)
+        logger.exception("Setting priority %s is not existed.", priority)
         raise err
 
 
@@ -79,7 +85,7 @@ class BaseSettings(MutableMapping):
 
     frozen_check = FrozenCheck()
 
-    def __init__(self, settings: Mapping = None, priority="project"):
+    def __init__(self, settings: Mapping = None, priority: str = "project"):
         self._frozen: bool = False
         self._data: Dict[str, SettingAttributes] = {}
         if settings:
@@ -152,3 +158,38 @@ class BaseSettings(MutableMapping):
             self._data.setdefault(key, SettingAttributes()).set(
                 value, kwargs.get("priority", "project")
             )
+
+
+class Settings(BaseSettings):
+    def __init__(
+        self,
+        settings: Mapping = None,
+        config: str = ".minotaur.yaml",
+        priority: str = "project",
+    ):
+        super(Settings, self).__init__(settings, priority)
+
+        with self.unfreeze():
+            self.update_from_module("minotaur.settings.default_settings", "default")
+
+            path_config: Path = Path.home() / config
+            if path_config.is_file():
+                dict_config: Dict[str, Any] = yaml.safe_load(path_config)
+                self.update(dict_config, priority="user")
+            else:
+                logger.info("The user settings file %s does not exist.", path_config)
+
+            validate = os.environ.items()
+            for k, v in filter(
+                lambda x: x[0].startswith("MINOTAUR_"), os.environ.items()
+            ):
+                self.set(k, v, "env")
+
+    def update_from_project(self, module: str):
+        self.update_from_module(module, priority="project")
+
+    def update_from_module(self, module: str, priority: str = "project") -> None:
+        module = import_module(module)
+        for key in dir(module):
+            if key.isupper():
+                self.set(key, getattr(module, key), priority)

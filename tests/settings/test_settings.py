@@ -1,14 +1,19 @@
+import os
 from collections import Iterator
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, Dict
 from unittest.case import TestCase
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from minotaur.exceptions import SettingsFrozenException
 from minotaur.settings import (
     SETTING_PRIORITIES,
     BaseSettings,
     SettingAttributes,
+    Settings,
     get_settings_priority,
+    logger,
 )
 
 
@@ -22,8 +27,10 @@ class SettingsFunctionsTest(TestCase):
         priority: int = get_settings_priority(self.setting_default)
         self.assertEqual(priority, SETTING_PRIORITIES[self.setting_default])
 
-        with self.assertRaises(KeyError):
-            priority: int = get_settings_priority(self.setting_customize)
+        with self.assertLogs(logger, "ERROR"):
+            with self.assertRaises(KeyError):
+                priority: int = get_settings_priority(self.setting_customize)
+        # TODO: add assert for logger message
 
         SETTING_PRIORITIES[self.setting_customize]: int = 25
         priority: int = get_settings_priority(self.setting_customize)
@@ -232,3 +239,51 @@ class BaseSettingsTest(TestCase):
     def test_frozen_check(self):
         with self.assertRaises(SettingsFrozenException):
             del self.base_settings["test_default_1"]
+
+
+class SettingsTest(TestCase):
+    maxDiff = None
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.settings_default: Dict[str, str] = {
+            "test_default_1": "default_1",
+            "test_default_2": "default_2",
+        }
+
+    def setUp(self) -> None:
+        self.settings = Settings(self.settings_default, "default")
+        self.tempdir = TemporaryDirectory()
+
+    def tearDown(self) -> None:
+        del self.settings
+        self.tempdir.cleanup()
+
+    def test_init_empty(self):
+        # TODO: environ mock
+        with patch.object(
+            os, "environ", new_callable=PropertyMock
+        ) as mock_os_environ, patch.object(
+            Path, "home", return_value=Path(self.tempdir.name)
+        ):
+            mock_os_environ.return_value = {}
+            with self.assertLogs(logger, "INFO") as cm:
+                settings = Settings()
+            self.assertEqual(
+                cm.output,
+                [
+                    f"INFO:minotaur.settings:The user settings file {Path.home() / '.minotaur.yaml'} does not exist."
+                ],
+            )
+        # self.assertEqual(len(settings), 0)
+
+    @patch.object(Path, "home")
+    def test_init(self, mock_path_home):
+        # TODO: environ mock
+        with patch.object(
+            os, "environ", new_callable=PropertyMock, return_value={"MINOTAUR_SENTRY_DSN": "DSN"}
+        ) as mock_os_environ, patch.object(Path, "home", return_value=Path(self.tempdir.name)):
+            # mock_os_environ.return_value = {"MINOTAUR_SENTRY_DSN": "DSN"}
+            with self.assertLogs(logger, "INFO") as cm:
+                settings = Settings()
+        pass
