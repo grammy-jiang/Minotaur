@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
 from unittest.case import TestCase
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 
 from minotaur.exceptions import SettingsFrozenException
 from minotaur.settings import (
@@ -13,6 +13,7 @@ from minotaur.settings import (
     SettingAttributes,
     Settings,
     get_settings_priority,
+    get_user_config,
     logger,
 )
 
@@ -35,6 +36,10 @@ class SettingsFunctionsTest(TestCase):
         SETTING_PRIORITIES[self.setting_customize]: int = 25
         priority: int = get_settings_priority(self.setting_customize)
         self.assertEqual(priority, SETTING_PRIORITIES[self.setting_customize])
+
+    # TODO:
+    def test_get_user_config(self):
+        pass
 
 
 class SettingAttributesTest(TestCase):
@@ -259,31 +264,42 @@ class SettingsTest(TestCase):
         del self.settings
         self.tempdir.cleanup()
 
+    # TODO: replace mocking Path.home() with mocking get_user_config
     def test_init_empty(self):
-        # TODO: environ mock
-        with patch.object(
-            os, "environ", new_callable=PropertyMock
-        ) as mock_os_environ, patch.object(
+        with patch.object(os.environ, "items", return_value={}), patch.object(
             Path, "home", return_value=Path(self.tempdir.name)
-        ):
-            mock_os_environ.return_value = {}
-            with self.assertLogs(logger, "INFO") as cm:
-                settings = Settings()
+        ), self.assertLogs(logger, "INFO") as cm:
+            settings = Settings()
             self.assertEqual(
                 cm.output,
                 [
                     f"INFO:minotaur.settings:The user settings file {Path.home() / '.minotaur.yaml'} does not exist."
                 ],
             )
+        # TODO: test the content of settings
         # self.assertEqual(len(settings), 0)
 
-    @patch.object(Path, "home")
-    def test_init(self, mock_path_home):
-        # TODO: environ mock
+    # TODO: replace mocking Path.home() with mocking get_user_config
+    def test_init(self):
         with patch.object(
-            os, "environ", new_callable=PropertyMock, return_value={"MINOTAUR_SENTRY_DSN": "DSN"}
-        ) as mock_os_environ, patch.object(Path, "home", return_value=Path(self.tempdir.name)):
-            # mock_os_environ.return_value = {"MINOTAUR_SENTRY_DSN": "DSN"}
-            with self.assertLogs(logger, "INFO") as cm:
-                settings = Settings()
+            os.environ, "items", return_value={"MINOTAUR_SENTRY_DSN": "DSN"}.items()
+        ), patch.object(Path, "home", return_value=Path(os.getcwd()) / "tests/samples"):
+            settings = Settings()
+
+        # user config
+        self.assertIn("TEST", settings)
+        self.assertEqual(settings["TEST"], 1)
+        self.assertEqual(settings.get_priority("TEST"), "user")
+
+        # env config
+        self.assertIn("SENTRY_DSN", settings)
+        self.assertEqual("DSN", settings["SENTRY_DSN"])
+        self.assertEqual(settings.get_priority("SENTRY_DSN"), "env")
+
+    # TODO:
+    def test_update_from_project(self):
+        pass
+
+    # TODO:
+    def test_update_from_module(self):
         pass

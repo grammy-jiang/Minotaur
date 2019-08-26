@@ -160,30 +160,35 @@ class BaseSettings(MutableMapping):
             )
 
 
+def get_user_config(config: str = ".minotaur.yaml") -> Optional[Path]:
+    path_config: Path = Path.home() / config
+    if path_config.is_file():
+        return path_config
+    else:
+        logger.info("The user settings file %s does not exist.", path_config)
+
+
 class Settings(BaseSettings):
     def __init__(
         self,
         settings: Mapping = None,
-        config: str = ".minotaur.yaml",
         priority: str = "project",
+        config: str = ".minotaur.yaml",
     ):
         super(Settings, self).__init__(settings, priority)
 
         with self.unfreeze():
             self.update_from_module("minotaur.settings.default_settings", "default")
 
-            path_config: Path = Path.home() / config
-            if path_config.is_file():
-                dict_config: Dict[str, Any] = yaml.safe_load(path_config)
+            path_config: Path = get_user_config(config)
+            if path_config:
+                with path_config.open() as f:
+                    dict_config: Dict[str, Any] = yaml.safe_load(f.read())
                 self.update(dict_config, priority="user")
-            else:
-                logger.info("The user settings file %s does not exist.", path_config)
 
-            validate = os.environ.items()
-            for k, v in filter(
-                lambda x: x[0].startswith("MINOTAUR_"), os.environ.items()
-            ):
-                self.set(k, v, "env")
+            for k, v in os.environ.items():
+                if k.startswith("MINOTAUR_"):
+                    self.set(k.replace("MINOTAUR_", "", 1), v, "env")
 
     def update_from_project(self, module: str):
         self.update_from_module(module, priority="project")
