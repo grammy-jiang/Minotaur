@@ -1,1 +1,1 @@
-TEST_DEFAULT = "test"
+TEST_PROJECT = "test"
