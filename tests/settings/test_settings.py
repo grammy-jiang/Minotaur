@@ -1,5 +1,5 @@
 import os
-from collections import Iterator
+from collections.abc import Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
@@ -247,21 +247,10 @@ class BaseSettingsTest(TestCase):
 
 
 class SettingsTest(TestCase):
-    maxDiff = None
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.settings_default: Dict[str, str] = {
-            "test_default_1": "default_1",
-            "test_default_2": "default_2",
-        }
-
     def setUp(self) -> None:
-        self.settings = Settings(self.settings_default, "default")
         self.tempdir = TemporaryDirectory()
 
     def tearDown(self) -> None:
-        del self.settings
         self.tempdir.cleanup()
 
     # TODO: replace mocking Path.home() with mocking get_user_config
@@ -287,9 +276,9 @@ class SettingsTest(TestCase):
             settings = Settings()
 
         # user config
-        self.assertIn("TEST", settings)
-        self.assertEqual(settings["TEST"], 1)
-        self.assertEqual(settings.get_priority("TEST"), "user")
+        self.assertIn("TEST_USER", settings)
+        self.assertEqual(settings["TEST_USER"], 1)
+        self.assertEqual(settings.get_priority("TEST_USER"), "user")
 
         # env config
         self.assertIn("SENTRY_DSN", settings)
@@ -300,6 +289,15 @@ class SettingsTest(TestCase):
     def test_update_from_project(self):
         pass
 
-    # TODO:
     def test_update_from_module(self):
-        pass
+        with patch.object(
+            Path, "home", return_value=Path(os.getcwd()) / "tests/samples"
+        ):
+            settings = Settings()
+
+        with settings.unfreeze():
+            settings.update_from_module("tests.samples.settings")
+
+        self.assertIn("TEST_PROJECT", settings)
+        self.assertEqual("test", settings["TEST_PROJECT"])
+        self.assertEqual(settings.get_priority("TEST_PROJECT"), "project")

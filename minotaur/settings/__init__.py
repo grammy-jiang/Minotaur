@@ -31,6 +31,8 @@ from minotaur.exceptions import SettingsFrozenException
 logging.basicConfig(format="%(asctime) %(levelname) %(message)s")
 logger = logging.getLogger(__name__)
 
+DEFAULT_SETTINGS = "minotaur.settings.default_settings"
+
 SETTING_PRIORITIES: Dict[str, int] = {
     "default": 0,
     "user": 10,
@@ -178,7 +180,7 @@ class Settings(BaseSettings):
         super(Settings, self).__init__(settings, priority)
 
         with self.unfreeze():
-            self.update_from_module("minotaur.settings.default_settings", "default")
+            self.update_from_module(DEFAULT_SETTINGS, "default")
 
             path_config: Path = get_user_config(config)
             if path_config:
