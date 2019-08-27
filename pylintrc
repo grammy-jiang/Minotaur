@@ -1,2 +1,2 @@
 [MASTER]
-ignore=_version.py
+ignore=_version.py, tests
