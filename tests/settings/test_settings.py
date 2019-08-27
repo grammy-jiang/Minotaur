@@ -2,7 +2,7 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from unittest.case import TestCase
 from unittest.mock import patch
 
@@ -24,6 +24,13 @@ class SettingsFunctionsTest(TestCase):
         cls.setting_default: str = "default"
         cls.setting_customize: str = "customize"
 
+    def setUp(self) -> None:
+        self.tempdir = TemporaryDirectory()
+
+    def tearDown(self) -> None:
+        self.tempdir.cleanup()
+        del self.tempdir
+
     def test_get_settings_priority(self) -> None:
         priority: int = get_settings_priority(self.setting_default)
         self.assertEqual(priority, SETTING_PRIORITIES[self.setting_default])
@@ -37,9 +44,25 @@ class SettingsFunctionsTest(TestCase):
         priority: int = get_settings_priority(self.setting_customize)
         self.assertEqual(priority, SETTING_PRIORITIES[self.setting_customize])
 
-    # TODO:
     def test_get_user_config(self):
-        pass
+        # not find the user config
+        with patch.object(
+            Path, "home", return_value=Path(self.tempdir.name)
+        ), self.assertLogs(logger, "INFO") as cm:
+            user_config: Optional[Path] = get_user_config()
+            self.assertEqual(
+                cm.output,
+                [
+                    f"INFO:minotaur.settings:The user settings file {Path.home() / '.minotaur.yaml'} does not exist."
+                ],
+            )
+
+        # find the user config
+        with patch.object(
+            Path, "home", return_value=Path(os.getcwd()) / "tests/samples"
+        ):
+            user_config: Optional[Path] = get_user_config()
+            self.assertEqual(user_config, Path.home() / ".minotaur.yaml")
 
 
 class SettingAttributesTest(TestCase):
@@ -148,7 +171,7 @@ class BaseSettingsTest(TestCase):
     def test_getitem(self):
         self.assertEqual(self.base_settings["test_default_1"], "default_1")
         with self.assertRaises(KeyError):
-            value: Any = self.base_settings["test_default_3"]
+            _: Any = self.base_settings["test_default_3"]
 
     def test_iter(self):
         iter_base_settings = iter(self.base_settings)
@@ -252,27 +275,23 @@ class SettingsTest(TestCase):
 
     def tearDown(self) -> None:
         self.tempdir.cleanup()
+        del self.tempdir
 
-    # TODO: replace mocking Path.home() with mocking get_user_config
+    # TODO: mock DEFAULT_SETTINGS instead of update_from_module
     def test_init_empty(self):
-        with patch.object(os.environ, "items", return_value={}), patch.object(
-            Path, "home", return_value=Path(self.tempdir.name)
-        ), self.assertLogs(logger, "INFO") as cm:
+        with patch.object(Settings, "update_from_module", return_value=None), patch(
+            "minotaur.settings.get_user_config", return_value=None
+        ), patch.object(os.environ, "items", return_value={}):
             settings = Settings()
-            self.assertEqual(
-                cm.output,
-                [
-                    f"INFO:minotaur.settings:The user settings file {Path.home() / '.minotaur.yaml'} does not exist."
-                ],
-            )
-        # TODO: test the content of settings
-        # self.assertEqual(len(settings), 0)
+            self.assertEqual(len(settings), 0)
 
-    # TODO: replace mocking Path.home() with mocking get_user_config
     def test_init(self):
-        with patch.object(
+        with patch(
+            "minotaur.settings.get_user_config",
+            return_value=Path(os.getcwd()) / "tests/samples/.minotaur.yaml",
+        ), patch.object(
             os.environ, "items", return_value={"MINOTAUR_SENTRY_DSN": "DSN"}.items()
-        ), patch.object(Path, "home", return_value=Path(os.getcwd()) / "tests/samples"):
+        ):
             settings = Settings()
 
         # user config
