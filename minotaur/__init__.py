@@ -1,3 +1,8 @@
+"""
+Minotaur
+
+Collect the data from local sensors and send to other receivers
+"""
 from minotaur._version import get_versions
 
 __version__ = get_versions()["version"]
