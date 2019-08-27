@@ -314,5 +314,5 @@ class SettingsTest(TestCase):
             settings.update_from_module("tests.samples.settings")
 
         self.assertIn("TEST_PROJECT", settings)
-        self.assertEqual("test", settings["TEST_PROJECT"])
+        self.assertEqual("project_setting", settings["TEST_PROJECT"])
         self.assertEqual(settings.get_priority("TEST_PROJECT"), "project")

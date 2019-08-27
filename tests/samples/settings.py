@@ -1,1 +1,1 @@
-TEST_PROJECT = "test"
+TEST_PROJECT = "project_setting"
