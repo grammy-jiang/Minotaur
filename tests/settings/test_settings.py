@@ -304,10 +304,6 @@ class SettingsTest(TestCase):
         self.assertEqual("DSN", settings["SENTRY_DSN"])
         self.assertEqual(settings.get_priority("SENTRY_DSN"), "env")
 
-    # TODO:
-    def test_update_from_project(self):
-        pass
-
     def test_update_from_module(self):
         with patch.object(
             Path, "home", return_value=Path(os.getcwd()) / "tests/samples"

@@ -192,9 +192,6 @@ class Settings(BaseSettings):
                 if k.startswith("MINOTAUR_"):
                     self.set(k.replace("MINOTAUR_", "", 1), v, "env")
 
-    def update_from_project(self, module: str):
-        self.update_from_module(module, priority="project")
-
     def update_from_module(self, module: str, priority: str = "project") -> None:
         module = import_module(module)
         for key in dir(module):
